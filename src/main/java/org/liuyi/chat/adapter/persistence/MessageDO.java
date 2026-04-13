@@ -1,12 +1,18 @@
 package org.liuyi.chat.adapter.persistence;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "message")
+@Table(name = "message",
+        indexes = {
+                @Index(name = "idx_session_seq", columnList = "session_id, seq_in_session", unique = true)
+        })
 @Data
 @Builder
 @NoArgsConstructor

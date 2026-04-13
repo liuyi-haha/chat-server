@@ -30,7 +30,7 @@ public class ParticipantMapper {
                 .sessionId(domainObj.getSessionId())
                 .userId(domainObj.getUserId())
                 .role(domainObj.getRole())
-                .remark(domainObj.getRemark() != null ? domainObj.getRemark().getRemark() : null)
+                .remark(domainObj.getRemark() != null ? domainObj.getRemark().remark() : null)
                 .createTime(domainObj.getCreateTime())
                 .build();
     }

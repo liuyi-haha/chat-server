@@ -2,7 +2,6 @@ package org.liuyi.chat.adapter.mapper;
 
 import org.liuyi.chat.adapter.persistence.FriendApplicationDO;
 import org.liuyi.chat.domain.friend_application.FriendApplication;
-import org.liuyi.chat.domain.friend_application.Status;
 
 /**
  * FriendApplication 领域模型与数据模型之间的转换器。
@@ -54,7 +53,7 @@ public class FriendApplicationMapper {
                 .targetUserId(domainObj.getTargetUserId())
                 .applyTime(domainObj.getApplyTime())
                 // 提取值对象的内部值 (通过 Getter)
-                .remark(domainObj.getRemark() != null ? domainObj.getRemark().getRemark() : null)
+                .remark(domainObj.getRemark() != null ? domainObj.getRemark().remark() : null)
                 .verificationMessage(domainObj.getVerificationMessage() != null ? domainObj.getVerificationMessage().getMessage() : null)
                 .status(domainObj.getStatus()) // 直接获取 Enum
                 .build();

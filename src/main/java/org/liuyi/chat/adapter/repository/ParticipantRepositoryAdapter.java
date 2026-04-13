@@ -22,4 +22,9 @@ public class ParticipantRepositoryAdapter implements ParticipantRepository {
                 .toList();
         jpaRepository.saveAll(dataList);
     }
+
+    @Override
+    public List<Participant> findByChatSessionId(String chatSessionId) {
+        return jpaRepository.findBySessionId(chatSessionId).stream().map(ParticipantMapper::toDomain).toList();
+    }
 }

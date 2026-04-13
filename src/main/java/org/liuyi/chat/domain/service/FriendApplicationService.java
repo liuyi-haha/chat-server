@@ -1,6 +1,5 @@
 package org.liuyi.chat.domain.service;
 
-import com.liuyi.auth.openapi.AcceptFriendApplicationRequest;
 import lombok.RequiredArgsConstructor;
 import org.liuyi.chat.domain.exception.AlreadyFriendException;
 import org.liuyi.chat.domain.exception.FriendApplicationNotFoundException;
@@ -19,6 +18,7 @@ import java.util.Optional;
 public class FriendApplicationService {
     private final FriendShipRepository friendShipRepository;
     private final FriendApplicationRepository friendApplicationRepository;
+
     public String sendFriendApplication(String fromUserId, String toUserId, String remark, String verificationMessage, Instant sendTime) {
         // 1. 检查是否已经存在从fromUserId到toUserId且状态为Pending的好友申请
         // 使用 Repository 提供的新方法
@@ -28,13 +28,6 @@ public class FriendApplicationService {
         }
 
         // 2. 检查fromUserId和toUserId是否已经是好友关系
-        String friendShipId;
-        if (fromUserId.compareTo(toUserId) < 0) {
-            friendShipId = fromUserId + ":" + toUserId;
-        } else {
-            friendShipId = toUserId + ":" + fromUserId;
-        }
-
         Optional<FriendShip> existingFriendShipOpt = friendShipRepository.findByUserIds(fromUserId, toUserId);
         if (existingFriendShipOpt.isPresent()) {
             // 如果已经是好友，可以选择抛出异常或返回特殊标识
@@ -52,25 +45,26 @@ public class FriendApplicationService {
 
     }
 
-    public void rejectFriendApplication(String fromUserId, String friendApplicationId) {
+    public FriendApplication rejectFriendApplication(String operatorId, String friendApplicationId) {
         // 检验好友申请是否存在
         Optional<FriendApplication> friendApplicationOpt = friendApplicationRepository.findById(friendApplicationId);
         FriendApplication friendApplication = friendApplicationOpt.orElseThrow(FriendApplicationNotFoundException::new);
 
         // 修改好友申请状态(含校验权限和状态的逻辑)
-        friendApplication.reject(fromUserId);
+        friendApplication.reject(operatorId);
 
         // 保存好友申请
         friendApplicationRepository.save(friendApplication);
+        return friendApplication;
     }
 
-    public FriendApplication acceptFriendApplication(String fromUserId, String friendApplicationId, AcceptFriendApplicationRequest acceptFriendApplicationRequest) {
+    public FriendApplication acceptFriendApplication(String operatorId, String friendApplicationId) {
         // 检验好友申请是否存在
         Optional<FriendApplication> friendApplicationOpt = friendApplicationRepository.findById(friendApplicationId);
         FriendApplication friendApplication = friendApplicationOpt.orElseThrow(FriendApplicationNotFoundException::new);
 
         // 修改好友申请状态(含校验权限和状态的逻辑)
-        friendApplication.accept(fromUserId);
+        friendApplication.accept(operatorId);
 
         // 保存好友申请
         friendApplicationRepository.save(friendApplication);

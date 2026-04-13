@@ -16,7 +16,10 @@ public class FriendShipService {
     public String createFriendShip(String applicantUserId, String targetUserId, Instant createTime) {
         // 检查是否已经是好友关系
         friendShipRepository.findByUserIds(applicantUserId, targetUserId).ifPresent(friendShip -> {
-            throw new AlreadyFriendException();
+            throw AlreadyFriendException.builder()
+                    .applicantUserId(applicantUserId)
+                    .targetUserId(targetUserId)
+                    .build();
         });
 
         // 不存在则创建

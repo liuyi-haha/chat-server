@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.liuyi.chat.domain.common.Remark;
 import org.liuyi.chat.domain.exception.MultiHandleFriendApplicationException;
 import org.liuyi.chat.domain.exception.NoPermissionToHandleException;
+import org.liuyi.chat.domain.exception.SelfFriendException;
 import org.liuyi.common.domain.exception.DomainException;
 import org.liuyi.common.domain.object.RandomIdGenerator;
 
@@ -16,12 +17,12 @@ import java.time.Instant;
  */
 @Getter
 public class FriendApplication {
-    private String id;
-    private String applicantUserId;
-    private String targetUserId;
-    private Instant applyTime;
-    private Remark remark; // 聚合的值对象
-    private VerificationMessage verificationMessage; // 聚合的值对象
+    private final String id;
+    private final String applicantUserId;
+    private final String targetUserId;
+    private final Instant applyTime;
+    private final Remark remark; // 聚合的值对象
+    private final VerificationMessage verificationMessage; // 聚合的值对象
     private Status status; // 状态需可变，初始为 PENDING
 
     // 私有构造：确保通过工厂创建
@@ -39,13 +40,13 @@ public class FriendApplication {
      * 静态工厂方法，用于创建 FriendApplication 实例。
      * 通常用于从数据模型（如 DTO 或数据库记录）转换为领域模型。
      *
-     * @param id                    申请ID
-     * @param applicantUserId       申请人ID
-     * @param targetUserId          目标用户ID
-     * @param applyTime             申请时间
-     * @param remark                申请备注
-     * @param verificationMessage   验证消息
-     * @return                      新的 FriendApplication 实例
+     * @param id                  申请ID
+     * @param applicantUserId     申请人ID
+     * @param targetUserId        目标用户ID
+     * @param applyTime           申请时间
+     * @param remark              申请备注
+     * @param verificationMessage 验证消息
+     * @return 新的 FriendApplication 实例
      */
     public static FriendApplication of(
             String id,
@@ -82,9 +83,11 @@ public class FriendApplication {
             String remark,
             String verificationMessage
     ) {
-
+        if (applicantUserId.equals(targetUserId)) {
+            throw new SelfFriendException();
+        }
         // 生成id
-        String id  = RandomIdGenerator.generate();
+        String id = RandomIdGenerator.generate();
         if (applicantUserId == null || applicantUserId.isBlank()) {
             throw new DomainException("applicantUserId cannot be null or blank");
         }
@@ -98,6 +101,10 @@ public class FriendApplication {
 
 
         return new FriendApplication(id, applicantUserId, targetUserId, applyTime, new Remark(remark), new VerificationMessage(verificationMessage), Status.PENDING);
+    }
+
+    public static void checkRemark(String remark) {
+        new Remark(remark); // 如果不合法会抛出异常
     }
 
     // 业务方法：接受申请
@@ -114,14 +121,13 @@ public class FriendApplication {
         checkHashPermissionToHandle(operatorId);
         if (status != Status.PENDING) {
             throw new MultiHandleFriendApplicationException();
-            
+
         }
         this.status = Status.REJECTED;
     }
 
     private void checkHashPermissionToHandle(String operatorUserId) {
-        if (!operatorUserId.equals(targetUserId))
-        {
+        if (!operatorUserId.equals(targetUserId)) {
             throw new NoPermissionToHandleException();
         }
     }

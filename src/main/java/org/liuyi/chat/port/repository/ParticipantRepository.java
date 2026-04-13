@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface ParticipantRepository {
     void addAll(List<Participant> participants);
+
+    List<Participant> findByChatSessionId(String chatSessionId);
 }

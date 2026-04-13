@@ -18,21 +18,9 @@ spring:
       discovery:
         server-addr: localhost:8848  # Nacos地址
         service: ${spring.application.name}-http  # 注册为HTTP服务，网关路由时使用
-  datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-    h2:
-      console:
-        enabled: true
-        path: /h2-console
-    jpa:
-      database-platform: org.hibernate.dialect.H2Dialect
-      hibernate:
-        ddl-auto: create-drop
-      show-sql: true
-      defer-datasource-initialization: true
+  profiles:
+    active: prod  # 激活生产环境配置
+
 
 dubbo:
   application:
@@ -45,7 +33,10 @@ dubbo:
   consumer:
     check: false
   scan:
-    base-packages: com.liuyi.chat  # ❗缺少这个配置
+    base-packages: org.liuyi.chat  # ❗缺少这个配置
+
+
+
 
 # 打印所有请求详情（包括 headers、body）
 logging:

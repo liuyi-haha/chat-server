@@ -7,6 +7,8 @@ import org.liuyi.chat.domain.private_chat_session.PrivateChatSession;
 import org.liuyi.chat.port.repository.PrivateChatSessionRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @RequiredArgsConstructor
 @Repository
 public class PrivateChatSessionRepositoryAdapter implements PrivateChatSessionRepository {
@@ -19,5 +21,15 @@ public class PrivateChatSessionRepositoryAdapter implements PrivateChatSessionRe
             newDO.setId(existedDO.getId());
         });
         jpaRepository.save(newDO);
+    }
+
+    @Override
+    public Optional<PrivateChatSession> findByFriendShipId(String friendshipId) {
+        return jpaRepository.findByFriendShipId(friendshipId).map(PrivateChatSessionMapper::toDomain);
+    }
+
+    @Override
+    public Optional<PrivateChatSession> findById(String privateSessionId) {
+        return jpaRepository.findByBusinessId(privateSessionId).map(PrivateChatSessionMapper::toDomain);
     }
 }

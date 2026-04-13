@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface PrivateChatSessionJpaRepository extends JpaRepository<PrivateChatSessionDO, Long> {
     Optional<PrivateChatSessionDO> findByBusinessId(String businessId);
+
+    Optional<PrivateChatSessionDO> findByFriendShipId(String friendshipId);
 }
