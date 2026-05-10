@@ -9,7 +9,7 @@
         <relativePath/>
     </parent>
     <groupId>org.liuyi</groupId>
-    <artifactId>chat-server</artifactId>
+    <artifactId>chat</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>chat-server</name>
     <description>chat-server</description>
@@ -73,11 +73,6 @@
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

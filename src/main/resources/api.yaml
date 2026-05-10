@@ -25,6 +25,50 @@ components:
         type: string
       description: 网关从Token解析后注入的用户ID（客户端无需传递）
 
+  schemas:
+    # 通用消息响应数据
+    SendMessageResponseData:
+      type: object
+      required:
+        - messageId
+        - sequence
+        - sendTime
+      properties:
+        messageId:
+          type: string
+          description: 消息ID
+        sequence:
+          type: integer
+          format: int64
+          description: 消息在聊天会话中的次序
+        sendTime:
+          type: string
+          format: date-time
+          description: 发送时间 ISO 8601 格式
+
+    # 抽取的公共响应体（用于图片/语音消息发送）
+    SendFileMessageResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: 是否成功
+        data:
+          $ref: '#/components/schemas/SendMessageResponseData'
+        errCode:
+          type: string
+          description: 错误码
+          enum:
+            - "SESSION_NOT_FOUND"
+            - "FRIENDSHIP_REQUIRED"
+            - "NOT_PARTICIPANT"
+            - "UNKNOWN_ERROR"
+        errMsg:
+          type: string
+          description: 错误信息
+
 paths:
   # ==================== 发送好友申请 ====================
   /friend/applications:
@@ -198,7 +242,7 @@ paths:
                     description: 错误信息
 
   # ==================== 发送文本消息 ====================
-  /chat/sessions/{sessionId}/messages:
+  /chat/sessions/{sessionId}/text-messages:
     post:
       operationId: sendTextMessage
       description: 发送文本消息（需要认证）
@@ -267,3 +311,223 @@ paths:
                   errMsg:
                     type: string
                     description: 错误信息
+
+  # ==================== 申请文件上传凭证 ====================
+  /chat/sessions/{sessionId}/files/upload-credential:
+    post:
+      operationId: applyCredentialToUploadMessageFile
+      description: 申请消息中的文件的上传凭证（需要认证）。返回临时token用于后续上传文件到对象存储
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/XUserId'  # 声明请求头
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 聊天会话ID
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - messageType
+              properties:
+                messageType:
+                  type: string
+                  description: 文件类型
+                  enum:
+                    - IMAGE
+                    - DOCUMENT
+                    - VOICE
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    description: 是否成功
+                  data:
+                    type: object
+                    required:
+                      - uploadToken
+                    properties:
+                      uploadToken:
+                        type: string
+                        description: 上传文件的临时凭证（Token）
+                  errCode:
+                    type: string
+                    description: 错误码
+                    enum:
+                      - "SESSION_NOT_FOUND"
+                      - "NOT_PARTICIPANT"
+                      - "INVALID_FILE_TYPE"
+                      - "UNKNOWN_ERROR"
+                  errMsg:
+                    type: string
+                    description: 错误信息
+
+  # ==================== 发送图片消息 ====================
+  /chat/sessions/{sessionId}/image-messages:
+    post:
+      operationId: sendImageMessage
+      description: 发送图片消息（需要认证）
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/XUserId'  # 声明请求头
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 聊天会话ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - width
+                - height
+              properties:
+                fileId:
+                  type: string
+                  description: 提前上传到文件微服务得到的文件id
+                width:
+                  type: integer
+                  description: 图片宽度（像素）
+                height:
+                  type: integer
+                  description: 图片高度（像素）
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    description: 是否成功
+                  data:
+                    $ref: '#/components/schemas/SendMessageResponseData'
+                  errCode:
+                    type: string
+                    description: 错误码
+                    enum:
+                      - "SESSION_NOT_FOUND"
+                      - "FRIENDSHIP_REQUIRED" # 好友解除后，私聊会话不删除；但是如果要私聊，则必须是好友关系
+                      - "NOT_PARTICIPANT"
+                      - "UNKNOWN_ERROR"
+                  errMsg:
+                    type: string
+                    description: 错误信息
+
+  # ==================== 发送语音消息 ====================
+  /chat/sessions/{sessionId}/speech-messages:
+    post:
+      operationId: sendSpeechMessage
+      description: 发送语音消息（需要认证）
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/XUserId'  # 声明请求头
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 聊天会话ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - durationSeconds
+              properties:
+                fileId:
+                  type: string
+                  description: 提前上传到文件微服务得到的文件id
+                durationSeconds:
+                  type: integer
+                  description: 持续时间（秒）
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendFileMessageResponse'
+
+  # ==================== 发送文档消息 ====================
+  /chat/sessions/{sessionId}/document-messages:
+    post:
+      operationId: sendDocumentMessage
+      description: 发送语音消息（需要认证）
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/XUserId'  # 声明请求头
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 聊天会话ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - documentName
+                - documentSize
+                - documentType
+              properties:
+                fileId:
+                  type: string
+                  description: 提前上传到文件微服务得到的文件id
+                documentName:
+                  type: string
+                  description: 文档的原始名称，不含目录，含后缀
+                documentSize:
+                  type: integer
+                  format: int64
+                  description: 文档大小，单位字节
+                documentType:
+                  type: string
+                  enum:
+                    - "PDF"
+                    - "WORD"
+                    - "TXT"
+                    - "OTHER"
+                  description: 文档类型
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendFileMessageResponse'
+

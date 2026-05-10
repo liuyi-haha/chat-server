@@ -42,6 +42,7 @@ public class Controller implements FriendApi, ChatApi {
         return FriendApi.super.getRequest();
     }
 
+
     @Override
     public ResponseEntity<AcceptFriendApplication200Response> acceptFriendApplication(String xUserId, String friendApplicationId, AcceptFriendApplicationRequest acceptFriendApplicationRequest) {
         Instant operateTime = Instant.now();
@@ -54,6 +55,37 @@ public class Controller implements FriendApi, ChatApi {
     public ResponseEntity<SendTextMessage200Response> sendTextMessage(String xUserId, String sessionId, SendTextMessageRequest sendTextMessageRequest) {
         Instant sendTime = Instant.now();
         var resp = application.sendTextMessage(xUserId, sessionId, sendTextMessageRequest, sendTime);
+        log.info(resp.toString());
+        return ResponseEntity.ok(resp);
+    }
+
+    @Override
+    public ResponseEntity<ApplyCredentialToUploadMessageFile200Response> applyCredentialToUploadMessageFile(String xUserId, String sessionId, ApplyCredentialToUploadMessageFileRequest applyCredentialToUploadMessageFileRequest) {
+        ApplyCredentialToUploadMessageFile200Response resp = application.applyCredentialToUploadMessageFile(xUserId, sessionId, applyCredentialToUploadMessageFileRequest);
+        log.info(resp.toString());
+        return ResponseEntity.ok(resp);
+    }
+
+    @Override
+    public ResponseEntity<SendImageMessage200Response> sendImageMessage(String xUserId, String sessionId, SendImageMessageRequest sendImageMessageRequest) {
+        Instant sendTime = Instant.now();
+        var resp = application.sendImageMessage(xUserId, sessionId, sendImageMessageRequest, sendTime);
+        log.info(resp.toString());
+        return ResponseEntity.ok(resp);
+    }
+
+    @Override
+    public ResponseEntity<SendFileMessageResponse> sendSpeechMessage(String xUserId, String sessionId, SendSpeechMessageRequest sendSpeechMessageRequest) {
+        Instant sendTime = Instant.now();
+        var resp = application.sendSpeechMessage(xUserId, sessionId, sendSpeechMessageRequest, sendTime);
+        log.info(resp.toString());
+        return ResponseEntity.ok(resp);
+    }
+
+    @Override
+    public ResponseEntity<SendFileMessageResponse> sendDocumentMessage(String xUserId, String sessionId, SendDocumentMessageRequest sendDocumentMessageRequest) {
+        Instant sendTime = Instant.now();
+        var resp = application.sendDocumentMessage(xUserId, sessionId, sendDocumentMessageRequest, sendTime);
         log.info(resp.toString());
         return ResponseEntity.ok(resp);
     }

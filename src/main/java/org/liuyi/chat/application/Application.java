@@ -9,17 +9,18 @@ import org.liuyi.chat.application.event.FriendApplicationSentEvent;
 import org.liuyi.chat.application.event.MessageSentEvent;
 import org.liuyi.chat.domain.exception.*;
 import org.liuyi.chat.domain.friend_application.FriendApplication;
-import org.liuyi.chat.domain.message.Message;
-import org.liuyi.chat.domain.message.TextContent;
+import org.liuyi.chat.domain.message.*;
 import org.liuyi.chat.domain.service.*;
 import org.liuyi.chat.port.publisher.Publisher;
 import org.liuyi.chat_api.dubbo.get_session_userIds.GetSessionUserIdsRequest;
 import org.liuyi.chat_api.dubbo.get_session_userIds.GetSessionUserIdsResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @RequiredArgsConstructor
@@ -33,6 +34,7 @@ public class Application {
     private final MessageService messageService;
     private final Publisher publisher;
 
+    @Transactional
     public SendFriendApplication200Response sendFriendApplication(SendFriendApplicationRequest request, String fromUserId, Instant sendTime) {
         SendFriendApplication200Response resp = new SendFriendApplication200Response();
         try {
@@ -70,6 +72,7 @@ public class Application {
     }
 
 
+    @Transactional
     public RejectFriendApplication200Response rejectFriendApplication(String operatorId, String friendApplicationId, Instant operateTime) {
         RejectFriendApplication200Response resp = new RejectFriendApplication200Response();
         try {
@@ -100,6 +103,7 @@ public class Application {
         return resp;
     }
 
+    @Transactional
     public AcceptFriendApplication200Response acceptFriendApplication(String xUserId, String friendApplicationId, Instant operateTime, AcceptFriendApplicationRequest acceptFriendApplicationRequest) {
         AcceptFriendApplication200Response resp = new AcceptFriendApplication200Response();
         try {
@@ -175,6 +179,7 @@ public class Application {
         return resp;
     }
 
+    @Transactional
     public SendTextMessage200Response sendTextMessage(String userId, String chatSessionId, SendTextMessageRequest sendTextMessageRequest, Instant sendTime) {
         SendTextMessage200Response resp = new SendTextMessage200Response();
         try {
@@ -191,15 +196,12 @@ public class Application {
                     .build();
 
             // 根据消息类型设置事件内容
-            switch (message.getContent().getType()) {
-                case Text:
-                    var textContent = (TextContent) message.getContent();
-                    event.setTextContent(textContent.getText());
-                    break;
+            if (Objects.requireNonNull(message.getContent().getType()) == ContentType.Text) {
+                var textContent = (TextContent) message.getContent();
+                event.setTextContent(textContent.text());
                 // 其他消息类型的处理
-                default:
-                    // 抛出异常
-                    throw new UnsupportedOperationException("不支持的消息类型: " + message.getContent().getType());
+            } else {// 抛出异常
+                throw new UnsupportedOperationException("不支持的消息类型: " + message.getContent().getType());
             }
 
             publisher.publish(event);
@@ -215,7 +217,7 @@ public class Application {
             resp.success(false).errCode(SendTextMessage200Response.ErrCodeEnum.FRIENDSHIP_REQUIRED);
         } catch (ParticipantNotFoundException ex) {
             log.warn("聊天会话成员不存在", ex);
-            resp.success(false).errMsg(ex.getMessage());
+            resp.success(false).errMsg(ex.getMessage()).errCode(SendTextMessage200Response.ErrCodeEnum.NOT_PARTICIPANT);
         } catch (ContentEmptyException ex) {
             log.warn("消息内容不能为空", ex);
             resp.success(false).errCode(SendTextMessage200Response.ErrCodeEnum.CONTENT_EMPTY);
@@ -229,6 +231,7 @@ public class Application {
         return resp;
     }
 
+    @Transactional
     public GetSessionUserIdsResponse getSessionUserIds(GetSessionUserIdsRequest request) {
         GetSessionUserIdsResponse resp = new GetSessionUserIdsResponse();
         try {
@@ -241,5 +244,180 @@ public class Application {
             resp.setErrMsg(ex.getMessage());
         }
         return resp;
+    }
+
+    @Transactional
+    public SendImageMessage200Response sendImageMessage(String userId, String sessionId, SendImageMessageRequest req, Instant sendTime) {
+        SendImageMessage200Response resp = new SendImageMessage200Response();
+        try {
+            Message message = messageService.sendImageMessage(userId, sessionId, sendTime, req.getFileId(), new ImageSize(req.getWidth(), req.getHeight()));
+            // 发布应用事件
+            var event = MessageSentEvent.builder()
+                    .sendTime(sendTime)
+                    .messageId(message.getId())
+                    .sessionId(message.getSessionId())
+                    .senderId(message.getSenderUserId())
+                    .seqInSession(message.getSeqInChatSession())
+                    .senderId(message.getSenderUserId())
+                    .contentType(message.getContent().getType())
+                    .build();
+
+            // 根据消息类型设置事件内容
+            if (Objects.requireNonNull(message.getContent().getType()) == ContentType.Image) {
+                var imageContent = (ImageContent) message.getContent();
+                event.setFileId(imageContent.fileId());
+                event.setImageWidth(imageContent.size().width());
+                event.setImageHeight(imageContent.size().height());
+            } else {// 抛出异常
+                throw new UnsupportedOperationException("不支持的消息类型: " + message.getContent().getType());
+            }
+
+            publisher.publish(event);
+            var data = new SendMessageResponseData();
+            data.messageId(message.getId()).sequence(message.getSeqInChatSession().longValue()).sendTime(sendTime.atOffset(ZoneOffset.UTC));
+            resp.success(true).data(data);
+
+        } catch (FriendApplicationNotFoundException ex) {
+            log.warn("聊天会话不存在", ex);
+            resp.success(false).errCode(SendImageMessage200Response.ErrCodeEnum.SESSION_NOT_FOUND);
+        } catch (FriendShipNotFoundException ex) {
+            log.warn("好友关系存在", ex);
+            resp.success(false).errCode(SendImageMessage200Response.ErrCodeEnum.FRIENDSHIP_REQUIRED);
+        } catch (ParticipantNotFoundException ex) {
+            log.warn("聊天会话成员不存在", ex);
+            resp.success(false).errMsg(ex.getMessage()).errCode(SendImageMessage200Response.ErrCodeEnum.NOT_PARTICIPANT);
+        } catch (Exception ex) {
+            log.error("基础设施异常", ex);
+            resp.success(false).errMsg(ex.getMessage()).errCode(SendImageMessage200Response.ErrCodeEnum.UNKNOWN_ERROR);
+        }
+        return resp;
+    }
+
+    @Transactional
+    public SendFileMessageResponse sendSpeechMessage(String userId, String sessionId, SendSpeechMessageRequest req, Instant sendTime) {
+        SendFileMessageResponse resp = new SendFileMessageResponse();
+        try {
+            Message message = messageService.sendSpeechMessage(userId, sessionId, sendTime, req.getFileId(), req.getDurationSeconds());
+            // 发布应用事件
+            var event = MessageSentEvent.builder()
+                    .sendTime(sendTime)
+                    .messageId(message.getId())
+                    .sessionId(message.getSessionId())
+                    .senderId(message.getSenderUserId())
+                    .seqInSession(message.getSeqInChatSession())
+                    .senderId(message.getSenderUserId())
+                    .contentType(message.getContent().getType())
+                    .build();
+
+            // 根据消息类型设置事件内容
+            if (Objects.requireNonNull(message.getContent().getType()) == ContentType.Speech) {
+                var speechContent = (SpeechContent) message.getContent();
+                event.setFileId(speechContent.fileId());
+                event.setSpeechDurationSeconds(speechContent.durationSeconds());
+            } else {// 抛出异常
+                throw new UnsupportedOperationException("不支持的消息类型: " + message.getContent().getType());
+            }
+
+            publisher.publish(event);
+            var data = new SendMessageResponseData();
+            data.messageId(message.getId()).sequence(message.getSeqInChatSession().longValue()).sendTime(sendTime.atOffset(ZoneOffset.UTC));
+            resp.success(true).data(data);
+
+        } catch (FriendApplicationNotFoundException ex) {
+            log.warn("聊天会话不存在", ex);
+            resp.success(false).errCode(SendFileMessageResponse.ErrCodeEnum.SESSION_NOT_FOUND);
+        } catch (FriendShipNotFoundException ex) {
+            log.warn("好友关系存在", ex);
+            resp.success(false).errCode(SendFileMessageResponse.ErrCodeEnum.FRIENDSHIP_REQUIRED);
+        } catch (ParticipantNotFoundException ex) {
+            log.warn("聊天会话成员不存在", ex);
+            resp.success(false).errMsg(ex.getMessage()).errCode(SendFileMessageResponse.ErrCodeEnum.NOT_PARTICIPANT);
+        } catch (Exception ex) {
+            log.error("基础设施异常", ex);
+            resp.success(false).errMsg(ex.getMessage()).errCode(SendFileMessageResponse.ErrCodeEnum.UNKNOWN_ERROR);
+        }
+        return resp;
+    }
+
+    @Transactional
+    public SendFileMessageResponse sendDocumentMessage(String xUserId, String sessionId, SendDocumentMessageRequest req, Instant sendTime) {
+        SendFileMessageResponse resp = new SendFileMessageResponse();
+        try {
+            Message message = messageService.sendDocumentMessage(xUserId, sessionId, sendTime, req.getFileId(), req.getDocumentName(), req.getDocumentSize(), OpenApiDocumentTypeToDomainDocumentType(req.getDocumentType()));
+            // 发布应用事件
+            var event = MessageSentEvent.builder()
+                    .sendTime(sendTime)
+                    .messageId(message.getId())
+                    .sessionId(message.getSessionId())
+                    .senderId(message.getSenderUserId())
+                    .seqInSession(message.getSeqInChatSession())
+                    .senderId(message.getSenderUserId())
+                    .contentType(message.getContent().getType())
+                    .build();
+
+            // 根据消息类型设置事件内容
+            if (Objects.requireNonNull(message.getContent().getType()) == ContentType.Document) {
+                var documentContent = (DocumentContent) message.getContent();
+                event.setFileId(documentContent.fileId());
+                event.setDocumentName(documentContent.documentName());
+                event.setDocumentBytes(documentContent.documentSize().toBytes());
+                event.setDocumentType(documentContent.type());
+            } else {// 抛出异常
+                throw new UnsupportedOperationException("不支持的消息类型: " + message.getContent().getType());
+            }
+
+            publisher.publish(event);
+            var data = new SendMessageResponseData();
+            data.messageId(message.getId()).sequence(message.getSeqInChatSession().longValue()).sendTime(sendTime.atOffset(ZoneOffset.UTC));
+            resp.success(true).data(data);
+
+        } catch (FriendApplicationNotFoundException ex) {
+            log.warn("聊天会话不存在", ex);
+            resp.success(false).errCode(SendFileMessageResponse.ErrCodeEnum.SESSION_NOT_FOUND);
+        } catch (FriendShipNotFoundException ex) {
+            log.warn("好友关系存在", ex);
+            resp.success(false).errCode(SendFileMessageResponse.ErrCodeEnum.FRIENDSHIP_REQUIRED);
+        } catch (ParticipantNotFoundException ex) {
+            log.warn("聊天会话成员不存在", ex);
+            resp.success(false).errMsg(ex.getMessage()).errCode(SendFileMessageResponse.ErrCodeEnum.NOT_PARTICIPANT);
+        } catch (Exception ex) {
+            log.error("基础设施异常", ex);
+            resp.success(false).errMsg(ex.getMessage()).errCode(SendFileMessageResponse.ErrCodeEnum.UNKNOWN_ERROR);
+        }
+        return resp;
+    }
+
+
+    @Transactional
+    public ApplyCredentialToUploadMessageFile200Response applyCredentialToUploadMessageFile(String userId, String sessionId, ApplyCredentialToUploadMessageFileRequest applyCredentialToUploadMessageFileRequest) {
+
+        var resp = new ApplyCredentialToUploadMessageFile200Response();
+        try {
+            String uploadToken = messageService.createUploadMessageFileCredential(userId, sessionId, fileMessageTypeToContentType(applyCredentialToUploadMessageFileRequest.getMessageType()));
+            ApplyCredentialToUploadMessageFile200ResponseData data = new ApplyCredentialToUploadMessageFile200ResponseData().uploadToken(uploadToken);
+            resp.success(true).data(data);
+        } catch (Exception ex) {
+            log.error("基础设施异常", ex);
+            resp.success(false).errMsg(ex.getMessage()).errCode(ApplyCredentialToUploadMessageFile200Response.ErrCodeEnum.UNKNOWN_ERROR);
+        }
+        return resp;
+    }
+
+
+    private ContentType fileMessageTypeToContentType(ApplyCredentialToUploadMessageFileRequest.MessageTypeEnum messageType) {
+        return switch (messageType) {
+            case IMAGE -> ContentType.Image;
+            case DOCUMENT -> ContentType.Document;
+            case VOICE -> ContentType.Speech;
+        };
+    }
+
+    private DocumentType OpenApiDocumentTypeToDomainDocumentType(SendDocumentMessageRequest.DocumentTypeEnum documentType) {
+        return switch (documentType) {
+            case TXT -> DocumentType.TXT;
+            case PDF -> DocumentType.PDF;
+            case WORD -> DocumentType.WORD;
+            case OTHER -> DocumentType.OTHER; // 代表未知类型，返回null
+        };
     }
 }

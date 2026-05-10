@@ -36,7 +36,8 @@ dubbo:
     base-packages: org.liuyi.chat  # ❗缺少这个配置
 
 
-
+jwt:
+  private-key-path: 'F:\GraduationProject\backend\chat-server\config\private.pem'
 
 # 打印所有请求详情（包括 headers、body）
 logging:

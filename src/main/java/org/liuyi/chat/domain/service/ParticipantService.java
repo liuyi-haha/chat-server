@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 public class ParticipantService {
-    // todo @liuyi 写到这里了
     private final ParticipantRepository participantRepository;
 
     public List<String> createPrivateSessionParticipants(String sessionId, String applicantUserId, String targetUserId, String targetRemark, String applicationRemark) {

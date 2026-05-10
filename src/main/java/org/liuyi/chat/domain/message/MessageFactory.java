@@ -38,6 +38,88 @@ public class MessageFactory {
         return new Message(id, sessionId, seqInChatSession, new TextContent(text), sendTime, senderUserId);
     }
 
+    public static Message ofImageMessage(String id, String sessionId, Integer seqInChatSession, Instant sendTime, String senderUserId, String fileId, Integer imageWidth, Integer imageHeight) {
+        if (id == null || id.isBlank()) {
+            throw new DomainException("message id cannot be null or blank");
+        }
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new DomainException("sessionId cannot be null or blank");
+        }
+        if (seqInChatSession == null || seqInChatSession < 0) {
+            throw new DomainException("seqInChatSession must be >= 0");
+        }
+        if (sendTime == null) {
+            throw new DomainException("sendTime cannot be null");
+        }
+        if (senderUserId == null || senderUserId.isBlank()) {
+            throw new DomainException("senderUserId cannot be null or blank");
+        }
+        if (fileId == null || fileId.isBlank()) {
+            throw new DomainException("File ID cannot be null or blank");
+        }
+        if (imageHeight == null) {
+            throw new DomainException("Image size cannot be null");
+        }
+        if (imageWidth == null) {
+            throw new DomainException("Image size cannot be null");
+        }
+
+        ImageContent content = new ImageContent(fileId, new ImageSize(imageWidth, imageHeight));
+
+        return new Message(id, sessionId, seqInChatSession, content, sendTime, senderUserId);
+    }
+
+    public static Message ofSpeechMessage(String id, String sessionId, Integer seqInChatSession, Instant sendTime, String senderUserId, String fileId, Integer durationSeconds) {
+        if (id == null || id.isBlank()) {
+            throw new DomainException("message id cannot be null or blank");
+        }
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new DomainException("sessionId cannot be null or blank");
+        }
+        if (seqInChatSession == null || seqInChatSession < 0) {
+            throw new DomainException("seqInChatSession must be >= 0");
+        }
+        if (sendTime == null) {
+            throw new DomainException("sendTime cannot be null");
+        }
+        if (senderUserId == null || senderUserId.isBlank()) {
+            throw new DomainException("senderUserId cannot be null or blank");
+        }
+        if (fileId == null || fileId.isBlank()) {
+            throw new DomainException("File ID cannot be null or blank");
+        }
+
+        SpeechContent content = new SpeechContent(fileId, durationSeconds);
+
+        return new Message(id, sessionId, seqInChatSession, content, sendTime, senderUserId);
+    }
+
+    public static Message ofDocumentMessage(String id, String sessionId, Integer seqInChatSession, Instant sendTime, String senderUserId, String fileId, String documentName, Long bytes, DocumentType documentType) {
+        if (id == null || id.isBlank()) {
+            throw new DomainException("message id cannot be null or blank");
+        }
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new DomainException("sessionId cannot be null or blank");
+        }
+        if (seqInChatSession == null || seqInChatSession < 0) {
+            throw new DomainException("seqInChatSession must be >= 0");
+        }
+        if (sendTime == null) {
+            throw new DomainException("sendTime cannot be null");
+        }
+        if (senderUserId == null || senderUserId.isBlank()) {
+            throw new DomainException("senderUserId cannot be null or blank");
+        }
+        if (fileId == null || fileId.isBlank()) {
+            throw new DomainException("File ID cannot be null or blank");
+        }
+
+        DocumentContent content = new DocumentContent(fileId, documentName, new FileSize(bytes, FileSizeUnit.B), documentType);
+
+        return new Message(id, sessionId, seqInChatSession, content, sendTime, senderUserId);
+    }
+
+
     /**
      * 创建文本消息。
      *
@@ -77,4 +159,84 @@ public class MessageFactory {
         // 5. 创建 Message（触发其构造校验）
         return new Message(messageId, sessionId, nextSeq, content, sendTime, senderUserId);
     }
+
+    public Message createImageMessage(String sessionId, String senderUserId, Instant sendTime, String fileId, ImageSize size) {
+        // 1. 校验参数（基础）
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new DomainException("sessionId cannot be null or blank");
+        }
+        if (senderUserId == null || senderUserId.isBlank()) {
+            throw new DomainException("senderUserId cannot be null or blank");
+        }
+        if (sendTime == null) {
+            throw new DomainException("sendTime cannot be null");
+        }
+
+        // 2. 获取当前会话最大消息序号（由 Repository 提供）
+        Integer maxSeq = messageRepository.findMaxSeqInSession(sessionId);
+        Integer nextSeq = maxSeq + 1; // 如果 maxSeq 是 -1，表示当前会话没有消息，下一条消息的 seq 应该是 0
+
+        // 3. 构建业务ID：{sessionId}-{nextSeq}
+        String messageId = sessionId + "-" + RandomIdGenerator.generate();
+
+        // 4. 创建内容对象（触发 ImageContent 内部校验）
+        ImageContent content = new ImageContent(fileId, size);
+
+        // 5. 创建 Message（触发其构造校验）
+        return new Message(messageId, sessionId, nextSeq, content, sendTime, senderUserId);
+    }
+
+    public Message createSpeechMessage(String sessionId, String senderUserId, Instant sendTime, String fileId, Integer durationSeconds) {
+        // 1. 校验参数（基础）
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new DomainException("sessionId cannot be null or blank");
+        }
+        if (senderUserId == null || senderUserId.isBlank()) {
+            throw new DomainException("senderUserId cannot be null or blank");
+        }
+        if (sendTime == null) {
+            throw new DomainException("sendTime cannot be null");
+        }
+
+        // 2. 获取当前会话最大消息序号（由 Repository 提供）
+        Integer maxSeq = messageRepository.findMaxSeqInSession(sessionId);
+        Integer nextSeq = maxSeq + 1; // 如果 maxSeq 是 -1，表示当前会话没有消息，下一条消息的 seq 应该是 0
+
+        // 3. 构建业务ID：{sessionId}-{nextSeq}
+        String messageId = sessionId + "-" + RandomIdGenerator.generate();
+
+        // 4. 创建内容对象（触发 ImageContent 内部校验）
+        SpeechContent content = new SpeechContent(fileId, durationSeconds);
+
+        // 5. 创建 Message（触发其构造校验）
+        return new Message(messageId, sessionId, nextSeq, content, sendTime, senderUserId);
+    }
+
+    public Message createDocumentMessage(String sessionId, String senderUserId, Instant sendTime, String fileId, String documentName, Long bytes, DocumentType documentType) {
+        // 1. 校验参数（基础）
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new DomainException("sessionId cannot be null or blank");
+        }
+        if (senderUserId == null || senderUserId.isBlank()) {
+            throw new DomainException("senderUserId cannot be null or blank");
+        }
+        if (sendTime == null) {
+            throw new DomainException("sendTime cannot be null");
+        }
+
+        // 2. 获取当前会话最大消息序号（由 Repository 提供）
+        Integer maxSeq = messageRepository.findMaxSeqInSession(sessionId);
+        Integer nextSeq = maxSeq + 1; // 如果 maxSeq 是 -1，表示当前会话没有消息，下一条消息的 seq 应该是 0
+
+        // 3. 构建业务ID：{sessionId}-{nextSeq}
+        String messageId = sessionId + "-" + RandomIdGenerator.generate();
+
+        // 4. 创建内容对象（触发 ImageContent 内部校验）
+        DocumentContent content = new DocumentContent(fileId, documentName, new FileSize(bytes, FileSizeUnit.B), documentType);
+
+        // 5. 创建 Message（触发其构造校验）
+        return new Message(messageId, sessionId, nextSeq, content, sendTime, senderUserId);
+    }
+
+
 }

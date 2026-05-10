@@ -70,15 +70,22 @@ public class PublisherAdapter implements Publisher {
 
     @Override
     public void publish(org.liuyi.chat.application.event.MessageSentEvent event) {
+        // todo @liuyi
         var infraEvent = MessageSentEvent.builder()
                 .messageType(domainContentTypeToInfraMessageType(event.getContentType()))
                 .sendTime(event.getSendTime())
                 .sessionId(event.getSessionId())
                 .messageId(event.getMessageId())
-                // todo @liuyi 刷新maven
                 .seqInSession(event.getSeqInSession())
-                .textContent(event.getTextContent())
                 .senderUserId(event.getSenderId())
+                .textContent(event.getTextContent())
+                .fileId(event.getFileId())
+                .imageWidth(event.getImageWidth())
+                .imageHeight(event.getImageHeight())
+                .speechDurationSeconds(event.getSpeechDurationSeconds())
+                .documentName(event.getDocumentName())
+                .documentBytes(event.getDocumentBytes())
+                .documentType(domainDocumentTypeToInfraDocumentType(event.getDocumentType()))
                 .build();
         eventBus.publish(infraEvent);
     }
@@ -86,6 +93,22 @@ public class PublisherAdapter implements Publisher {
     private MessageType domainContentTypeToInfraMessageType(ContentType type) {
         return switch (type) {
             case Text -> MessageType.TEXT;
+            case Image -> MessageType.IMAGE;
+            case Speech -> MessageType.SPEECH;
+            case Document -> MessageType.DOCUMENT;
+            default -> throw new IllegalArgumentException("unsupported content type: " + type);
+        };
+    }
+
+    private DocumentType domainDocumentTypeToInfraDocumentType(org.liuyi.chat.domain.message.DocumentType type) {
+        if (type == null) {
+            return null;
+        }
+        return switch (type) {
+            case TXT -> DocumentType.TXT;
+            case PDF -> DocumentType.PDF;
+            case WORD -> DocumentType.WORD;
+            case OTHER -> DocumentType.OTHER;
             default -> throw new IllegalArgumentException("unsupported content type: " + type);
         };
     }
